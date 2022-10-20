@@ -13,7 +13,7 @@ import { convertStringHourToMinute } from './utils/convert-stringHours-to-minute
 import convertMinutesToHourString from './utils/convert-minutes-to-hour-string';
 
 const app = express()
-const URL = "192.168.1.111"
+const URL = "192.168.149.214"
 app.use(express.json());
 app.use(cors());
 
@@ -150,6 +150,21 @@ app.post("/task", verificaToken, async (request, response) => {
     })
     
     return response.status(201).json(task)
+})
+
+app.delete("/task/:id", verificaToken, async (request, response) => {
+
+    const auth = request.headers.authorization as string;
+    
+    const tokenDecoded = Decode(auth) as JwtPayload;
+
+    const deleteTask = prisma.task.delete({
+        where: {
+            id: request.params.id
+        }
+    })
+    
+    await prisma.$transaction([deleteTask])
 })
 
 app.listen(3030, URL, () => console.log("Server http running in port 3030"))
