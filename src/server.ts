@@ -17,6 +17,12 @@ const URL = "192.168.149.214"
 app.use(express.json());
 app.use(cors());
 
+interface TaskSelect {
+    title: string
+    description: string
+    hourStart: number
+}
+
 app.get("/users", async (request, response) => {
     const users = await prisma.user.findMany({
         include: {
@@ -165,6 +171,49 @@ app.delete("/task/:id", verificaToken, async (request, response) => {
     })
     
     await prisma.$transaction([deleteTask])
+    return response.status(201).send(true)
+})
+
+app.post("/task/:id", verificaToken, async (request, response) => {
+
+    const auth = request.headers.authorization as string;
+
+    const tokenDecoded = Decode(auth) as JwtPayload;
+
+    const body:any = request.body
+
+    const currentTask = await prisma.task.findUnique({
+        select: {
+            title: true,
+            description: true,
+            hourStart: true
+        },
+        where: {
+            id: request.params.id
+        }
+    })
+
+    try{
+        const updateTask = prisma.task.update({
+            where: {
+                id: request.params.id
+            },
+            data: {
+                title: body.title? body.title: currentTask?.title,
+                description: body.description? body.description: currentTask?.description,
+                hourStart: body.hourStart? convertStringHourToMinute(body.hourStart): currentTask?.hourStart,
+            }
+        })
+
+        await prisma.$transaction([updateTask])
+
+        return response.status(201).json(updateTask)
+} catch (err) {
+    response.status(404).send({
+        code: 404,
+        message: "Task Not Found"
+    })
+}
 })
 
 app.listen(3030, URL, () => console.log("Server http running in port 3030"))
